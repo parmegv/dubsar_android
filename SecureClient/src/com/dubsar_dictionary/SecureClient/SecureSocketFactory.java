@@ -27,6 +27,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.UnrecoverableKeyException;
 
 import javax.net.ssl.SSLSocket;
+import javax.net.ssl.TrustManagerFactory;
 
 import org.apache.harmony.xnet.provider.jsse.NativeCrypto;
 import org.apache.harmony.xnet.provider.jsse.OpenSSLContextImpl;
@@ -41,6 +42,7 @@ public class SecureSocketFactory extends SSLSocketFactory {
 	// private int mHandshakeTimeoutMillis = 0;
 
 	private static SecureSocketFactory sFactory = null;
+	private static TrustManagerFactory sTrustManagerFactory = null;
 	private static volatile String[] sCipherSuites = null;
 	private static volatile String[] sProtocols = null;
 	
@@ -54,6 +56,10 @@ public class SecureSocketFactory extends SSLSocketFactory {
 			}
 		}
 		return sFactory;
+	}
+	
+	public static void setTrustManager(TrustManagerFactory tmf) {
+		sTrustManagerFactory = tmf;
 	}
 	
 	/**
@@ -162,11 +168,18 @@ public class SecureSocketFactory extends SSLSocketFactory {
 	private javax.net.ssl.SSLSocketFactory makeSocketFactory() {
 		try {
 			OpenSSLContextImpl sslContext = new OpenSSLContextImpl();
-			sslContext.engineInit(null, null, null);
+			if(sTrustManagerFactory != null)
+				sslContext.engineInit(null, sTrustManagerFactory.getTrustManagers(), null);
+			else
+				sslContext.engineInit(null, null, null);
 			return sslContext.engineGetSocketFactory();
 		} catch (KeyManagementException e) {
 			Log.wtf(TAG, e);
 			return (javax.net.ssl.SSLSocketFactory) javax.net.ssl.SSLSocketFactory.getDefault();  // Fallback
 		}
+	}
+	
+	public javax.net.ssl.SSLSocketFactory getSecureSocketFactory() {
+		return getDelegate();
 	}
 }
